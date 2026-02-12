@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>project-health — Terminal health dashboard for developers</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080808;
+      --surface: #0f0f0f;
+      --surface2: #141414;
+      --border: #1c1c1c;
+      --border2: #252525;
+      --green: #00ff87;
+      --green-dim: #00cc6a;
+      --cyan: #00d4ff;
+      --purple: #a855f7;
+      --yellow: #f0c000;
+      --red: #ff4a4a;
+      --text: #d8d8d8;
+      --text-dim: #555;
+      --text-muted: #333;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-display: 'Syne', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Noise texture overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+      pointer-events: none;
+      z-index: 999;
+      opacity: 0.4;
+    }
+
+    /* Scanlines */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.03) 2px,
+        rgba(0,0,0,0.03) 4px
+      );
+      pointer-events: none;
+      z-index: 998;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 16px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(8,8,8,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--green);
+      letter-spacing: 0.05em;
+    }
+
+    .nav-logo span { color: var(--text-dim); }
+
+    nav a {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      transition: color 0.2s;
+    }
+
+    nav a:hover { color: var(--green); }
+
+    .nav-links { display: flex; gap: 32px; align-items: center; }
+
+    .nav-cta {
+      background: var(--green) !important;
+      color: #000 !important;
+      padding: 7px 16px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 120px 40px 80px;
+      text-align: center;
+      position: relative;
+    }
+
+    .hero-glow {
+      position: absolute;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 300px;
+      background: radial-gradient(ellipse, rgba(0,255,135,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,255,135,0.06);
+      border: 1px solid rgba(0,255,135,0.2);
+      border-radius: 100px;
+      padding: 6px 14px;
+      font-size: 11px;
+      color: var(--green);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+
+    .hero-badge::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(42px, 7vw, 80px);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      color: #fff;
+      margin-bottom: 20px;
+    }
+
+    .hero h1 em {
+      font-style: normal;
+      color: var(--green);
+    }
+
+    .hero p {
+      font-family: var(--font-mono);
+      font-size: 15px;
+      color: var(--text-dim);
+      max-width: 480px;
+      margin: 0 auto 48px;
+      line-height: 1.8;
+    }
+
+    .hero-ctas {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 64px;
+    }
+
+    .btn-primary {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--green);
+      color: #000;
+      border: none;
+      padding: 14px 24px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.02em;
+    }
+
+    .btn-primary:hover { background: #00cc6a; transform: translateY(-1px); box-shadow: 0 0 30px rgba(0,255,135,0.3); }
+
+    .btn-secondary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border2);
+      padding: 14px 24px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover { border-color: var(--text-dim); color: #fff; }
+
+    /* ── TERMINAL WINDOW ── */
+    .terminal-wrap {
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .terminal {
+      background: #0c0c0c;
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.03), 0 0 60px rgba(0,255,135,0.04);
+      text-align: left;
+    }
+
+    .terminal-bar {
+      background: #161616;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-red { background: #ff5f57; }
+    .dot-yellow { background: #ffbd2e; }
+    .dot-green { background: #28c940; }
+
+    .terminal-title {
+      flex: 1;
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 0.05em;
+    }
+
+    .terminal-body {
+      padding: 24px;
+      font-size: 12px;
+      line-height: 1.9;
+      min-height: 320px;
+    }
+
+    .t-prompt { color: var(--green); }
+    .t-cmd { color: var(--text); }
+    .t-ok { color: var(--green); }
+    .t-warn { color: var(--yellow); }
+    .t-fail { color: var(--red); }
+    .t-info { color: var(--cyan); }
+    .t-dim { color: var(--text-dim); }
+    .t-bold { font-weight: 700; color: #fff; }
+    .t-purple { color: var(--purple); }
+
+    .t-line {
+      display: block;
+      opacity: 0;
+      transform: translateY(4px);
+      animation: lineIn 0.3s forwards;
+    }
+
+    @keyframes lineIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .t-line:nth-child(1)  { animation-delay: 0.2s; }
+    .t-line:nth-child(2)  { animation-delay: 0.5s; }
+    .t-line:nth-child(3)  { animation-delay: 0.8s; }
+    .t-line:nth-child(4)  { animation-delay: 1.1s; }
+    .t-line:nth-child(5)  { animation-delay: 1.4s; }
+    .t-line:nth-child(6)  { animation-delay: 1.6s; }
+    .t-line:nth-child(7)  { animation-delay: 1.8s; }
+    .t-line:nth-child(8)  { animation-delay: 2.0s; }
+    .t-line:nth-child(9)  { animation-delay: 2.2s; }
+    .t-line:nth-child(10) { animation-delay: 2.4s; }
+    .t-line:nth-child(11) { animation-delay: 2.6s; }
+    .t-line:nth-child(12) { animation-delay: 2.8s; }
+    .t-line:nth-child(13) { animation-delay: 3.0s; }
+    .t-line:nth-child(14) { animation-delay: 3.2s; }
+    .t-line:nth-child(15) { animation-delay: 3.4s; }
+    .t-line:nth-child(16) { animation-delay: 3.6s; }
+    .t-line:nth-child(17) { animation-delay: 3.8s; }
+    .t-line:nth-child(18) { animation-delay: 4.0s; }
+    .t-line:nth-child(19) { animation-delay: 4.2s; }
+    .t-line:nth-child(20) { animation-delay: 4.5s; }
+
+    /* ── SECTION BASE ── */
+    section {
+      padding: 100px 40px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+
+    .section-sub {
+      font-size: 14px;
+      color: var(--text-dim);
+      max-width: 500px;
+      line-height: 1.8;
+    }
+
+    /* ── PROBLEM SECTION ── */
+    .problem-section {
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .problem-grid {
+      display: grid;
+      grid-template-columns: 1fr 60px 1fr;
+      gap: 40px;
+      align-items: center;
+      margin-top: 60px;
+    }
+
+    .tool-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .tool-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-dim);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tool-item::after {
+      content: '✕';
+      position: absolute;
+      right: 14px;
+      color: #ff4a4a66;
+      font-size: 14px;
+    }
+
+    .tool-icon { font-size: 18px; }
+
+    .vs-arrow {
+      text-align: center;
+      font-size: 24px;
+      color: var(--text-muted);
+    }
+
+    .solution-box {
+      background: rgba(0,255,135,0.04);
+      border: 1px solid rgba(0,255,135,0.2);
+      border-radius: 12px;
+      padding: 32px;
+      text-align: center;
+    }
+
+    .solution-box .big-check {
+      font-size: 48px;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    .solution-box h3 {
+      font-family: var(--font-display);
+      font-size: 20px;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .solution-box p {
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    /* ── FEATURES ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 60px;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+      transition: all 0.3s;
+      cursor: default;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(0,255,135,0.04) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .feature-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+    .feature-card:hover::before { opacity: 1; }
+
+    .feature-icon {
+      font-size: 28px;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    .feature-name {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .feature-desc {
+      font-size: 12px;
+      color: var(--text-dim);
+      line-height: 1.7;
+    }
+
+    .feature-score {
+      margin-top: 16px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--green);
+      opacity: 0.7;
+    }
+
+    /* ── HOW IT WORKS ── */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      margin-top: 60px;
+      position: relative;
+    }
+
+    .steps::before {
+      content: '';
+      position: absolute;
+      top: 32px;
+      left: calc(16.66% + 16px);
+      right: calc(16.66% + 16px);
+      height: 1px;
+      background: linear-gradient(90deg, var(--green), var(--cyan));
+      opacity: 0.3;
+    }
+
+    .step {
+      text-align: center;
+      padding: 0 32px;
+    }
+
+    .step-num {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      border: 1px solid var(--border2);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--green);
+      margin: 0 auto 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .step-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+
+    .step-desc {
+      font-size: 12px;
+      color: var(--text-dim);
+      line-height: 1.7;
+    }
+
+    /* ── INSTALL ── */
+    .install-section {
+      text-align: center;
+    }
+
+    .install-card {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 16px;
+      padding: 56px 40px;
+      max-width: 600px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .install-card::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(0,255,135,0.15), rgba(0,212,255,0.1), transparent 50%);
+      z-index: -1;
+    }
+
+    .install-title {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .install-sub {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-bottom: 32px;
+    }
+
+    .code-line {
+      display: flex;
+      align-items: center;
+      background: #080808;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 12px;
+      text-align: left;
+      gap: 12px;
+    }
+
+    .code-line code {
+      flex: 1;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--green);
+    }
+
+    .copy-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 5px 10px;
+      color: var(--text-dim);
+      font-size: 10px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .copy-btn:hover { border-color: var(--green); color: var(--green); }
+    .copy-btn.copied { border-color: var(--green); color: var(--green); }
+
+    .code-step-num {
+      font-size: 11px;
+      color: var(--text-muted);
+      min-width: 18px;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .footer-left {
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .footer-left strong { color: var(--green); }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+    }
+
+    .footer-links a {
+      font-size: 12px;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover { color: var(--green); }
+
+    /* ── REVEAL ANIMATIONS ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      nav { padding: 16px 20px; }
+      .nav-links { display: none; }
+      .hero { padding: 100px 20px 60px; }
+      section { padding: 70px 20px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: 1fr; gap: 40px; }
+      .steps::before { display: none; }
+      .problem-grid { grid-template-columns: 1fr; }
+      .vs-arrow { display: none; }
+      footer { flex-direction: column; gap: 20px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">$ <span>~/</span>project-health</div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how">How it works</a>
+    <a href="#install">Install</a>
+    <a href="https://github.com" class="nav-cta">GitHub →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-glow"></div>
+
+  <div class="hero-badge">v1.0.0 — open source</div>
+
+  <h1>Your codebase<br />has a <em>heartbeat.</em></h1>
+  <p>One command reveals everything wrong with your project. Dependencies, git health, security, tests — scored, graded, and fixed.</p>
+
+  <div class="hero-ctas">
+    <button class="btn-primary" onclick="copyInstall(this)">
+      <span>npm i -g project-health</span>
+      <span style="opacity:0.6;font-size:11px">copy</span>
+    </button>
+    <a href="https://github.com" class="btn-secondary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+      View on GitHub
+    </a>
+  </div>
+
+  <!-- Terminal Window -->
+  <div class="terminal-wrap">
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="dot dot-red"></div>
+        <div class="dot dot-yellow"></div>
+        <div class="dot dot-green"></div>
+        <div class="terminal-title">bash — ~/my-project</div>
+      </div>
+      <div class="terminal-body">
+        <span class="t-line"><span class="t-prompt">❯</span> <span class="t-cmd">project-health</span></span>
+        <span class="t-line">&nbsp;</span>
+        <span class="t-line"><span class="t-bold">  🏥  PROJECT HEALTH REPORT</span></span>
+        <span class="t-line"><span class="t-dim">  ────────────────────────────────────</span></span>
+        <span class="t-line"><span class="t-dim">  Analyzing 6 health indicators...</span></span>
+        <span class="t-line">&nbsp;</span>
+        <span class="t-line">  <span class="t-ok">✅</span> <span class="t-bold">Dependencies  </span>  <span class="t-ok">92/100</span>  <span class="t-dim">1 package outdated (patch)</span></span>
+        <span class="t-line">  <span class="t-ok">✅</span> <span class="t-bold">Git           </span>  <span class="t-ok">88/100</span>  <span class="t-dim">Branch: main, 2 days since commit</span></span>
+        <span class="t-line">  <span class="t-warn">⚠️ </span> <span class="t-bold">Code Quality  </span>  <span class="t-warn">64/100</span>  <span class="t-dim">14 TODOs, 3 FIXMEs found</span></span>
+        <span class="t-line">  <span class="t-ok">✅</span> <span class="t-bold">Environment   </span>  <span class="t-ok">100/100</span> <span class="t-dim">.env matches .env.example</span></span>
+        <span class="t-line">  <span class="t-fail">❌</span> <span class="t-bold">Tests         </span>  <span class="t-fail">30/100</span>  <span class="t-dim">No test configuration found</span></span>
+        <span class="t-line">  <span class="t-ok">✅</span> <span class="t-bold">Security      </span>  <span class="t-ok">95/100</span>  <span class="t-dim">1 low vulnerability</span></span>
+        <span class="t-line">&nbsp;</span>
+        <span class="t-line"><span class="t-dim">  ────────────────────────────────────</span></span>
+        <span class="t-line">  <span class="t-bold">Overall Score:</span> <span class="t-warn">78</span><span class="t-dim">/100</span>  Grade: <span class="t-cyan" style="color:#00d4ff">B</span>  <span class="t-dim">(Good)</span></span>
+        <span class="t-line">&nbsp;</span>
+        <span class="t-line">  <span class="t-dim">💡 Top fix: Add jest.config.js to boost Tests score by +50</span></span>
+        <span class="t-line"><span class="t-prompt">❯</span> <span style="width:8px;height:14px;background:var(--green);display:inline-block;animation:blink 1s step-end infinite;vertical-align:middle;margin-left:2px"></span></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROBLEM -->
+<div style="border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+<section class="problem-section" style="max-width:1100px; margin:0 auto;">
+  <div class="reveal">
+    <p class="section-label">The Problem</p>
+    <h2 class="section-title">Stop juggling 5 tools<br />for one answer.</h2>
+    <p class="section-sub">Every developer checks the same things daily — spread across different CLIs, dashboards, and tabs. project-health bundles it all.</p>
+  </div>
+
+  <div class="problem-grid reveal">
+    <div class="tool-list">
+      <div class="tool-item"><span class="tool-icon">📦</span> <span>npm outdated — for dependencies</span></div>
+      <div class="tool-item"><span class="tool-icon">🔀</span> <span>git status / git log — for repo state</span></div>
+      <div class="tool-item"><span class="tool-icon">🔍</span> <span>grep -r "TODO" — for code smell</span></div>
+      <div class="tool-item"><span class="tool-icon">🛡️</span> <span>npm audit — for vulnerabilities</span></div>
+      <div class="tool-item"><span class="tool-icon">🧪</span> <span>npm test — for test coverage</span></div>
+    </div>
+
+    <div class="vs-arrow">→</div>
+
+    <div class="solution-box">
+      <span class="big-check">🏥</span>
+      <h3>project-health</h3>
+      <p>One command.<br/>One score.<br/>All the context you need.</p>
+    </div>
+  </div>
+</section>
+</div>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="reveal">
+    <p class="section-label">Features</p>
+    <h2 class="section-title">Six health indicators.<br />One score.</h2>
+    <p class="section-sub">Each checker runs in parallel. Results are weighted, aggregated, and graded A–F so you know exactly where to focus.</p>
+  </div>
+
+  <div class="features-grid">
+
+    <div class="feature-card reveal">
+      <span class="feature-icon">📦</span>
+      <div class="feature-name">Dependencies</div>
+      <div class="feature-desc">Detects outdated packages, classifies them by severity (major/minor/patch), and gives you the exact update command.</div>
+      <div class="feature-score">⬥ Weight: 25%</div>
+    </div>
+
+    <div class="feature-card reveal">
+      <span class="feature-icon">🔀</span>
+      <div class="feature-name">Git Health</div>
+      <div class="feature-desc">Checks untracked files, days since last commit, unpushed changes, and current branch status in one glance.</div>
+      <div class="feature-score">⬥ Weight: 20%</div>
+    </div>
+
+    <div class="feature-card reveal">
+      <span class="feature-icon">🔍</span>
+      <div class="feature-name">Code Quality</div>
+      <div class="feature-desc">Scans every source file for TODO, FIXME, HACK, and BUG comments. Groups by file so you know where the debt lives.</div>
+      <div class="feature-score">⬥ Weight: 15%</div>
+    </div>
+
+    <div class="feature-card reveal">
+      <span class="feature-icon">🔐</span>
+      <div class="feature-name">Environment</div>
+      <div class="feature-desc">Compares your .env against .env.example. Flags missing keys or undocumented secrets before they break production.</div>
+      <div class="feature-score">⬥ Weight: 20%</div>
+    </div>
+
+    <div class="feature-card reveal">
+      <span class="feature-icon">🧪</span>
+      <div class="feature-name">Tests</div>
+      <div class="feature-desc">Verifies test setup, finds test files, and checks for a test framework config. Optionally runs tests and reports results.</div>
+      <div class="feature-score">⬥ Weight: 10%</div>
+    </div>
+
+    <div class="feature-card reveal">
+      <span class="feature-icon">🛡️</span>
+      <div class="feature-name">Security</div>
+      <div class="feature-desc">Runs npm audit, parses vulnerabilities by severity, and surfaces actionable fix commands from the audit output.</div>
+      <div class="feature-score">⬥ Weight: 10%</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<div style="border-top:1px solid var(--border); border-bottom:1px solid var(--border)">
+<section id="how" style="max-width:1100px; margin:0 auto;">
+  <div class="reveal" style="text-align:center; max-width:600px; margin:0 auto 60px;">
+    <p class="section-label">How it works</p>
+    <h2 class="section-title">Three steps.<br />Total clarity.</h2>
+  </div>
+
+  <div class="steps">
+    <div class="step reveal">
+      <div class="step-num">1</div>
+      <div class="step-title">Run the command</div>
+      <div class="step-desc">Type <code style="color:var(--green)">project-health</code> in any project directory. No config file needed. It auto-detects your stack.</div>
+    </div>
+    <div class="step reveal">
+      <div class="step-num">2</div>
+      <div class="step-title">Parallel analysis</div>
+      <div class="step-desc">All 6 checkers run simultaneously using Promise.allSettled — results in seconds, not minutes. No checker can crash the rest.</div>
+    </div>
+    <div class="step reveal">
+      <div class="step-num">3</div>
+      <div class="step-title">Scored report</div>
+      <div class="step-desc">Get a weighted score, letter grade, per-checker breakdown, and the most impactful fixes ranked by score improvement.</div>
+    </div>
+  </div>
+</section>
+</div>
+
+<!-- INSTALL -->
+<section id="install" class="install-section">
+  <div class="install-card reveal">
+    <p class="section-label" style="margin-bottom:12px;">Get started</p>
+    <div class="install-title">Ready in 10 seconds.</div>
+    <p class="install-sub">Install globally, run anywhere.</p>
+
+    <div class="code-line">
+      <span class="code-step-num">1</span>
+      <code>npm install -g project-health</code>
+      <button class="copy-btn" onclick="copyCode(this, 'npm install -g project-health')">copy</button>
+    </div>
+
+    <div class="code-line">
+      <span class="code-step-num">2</span>
+      <code>cd your-project && project-health</code>
+      <button class="copy-btn" onclick="copyCode(this, 'cd your-project && project-health')">copy</button>
+    </div>
+
+    <p style="font-size:12px; color:var(--text-dim); margin-top:24px;">
+      Requires Node.js 18+. Works on macOS, Linux, and Windows.
+    </p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-left">
+    Built with ❤️ for developers. <strong>project-health</strong> is MIT licensed.
+  </div>
+  <div class="footer-links">
+    <a href="https://github.com">GitHub</a>
+    <a href="https://npmjs.com">npm</a>
+    <a href="#">Docs</a>
+    <a href="#">MIT License</a>
+  </div>
+</footer>
+
+<style>
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+</style>
+
+<script>
+  // Reveal on scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // Stagger feature cards
+  document.querySelectorAll('.feature-card.reveal').forEach((card, i) => {
+    card.style.transitionDelay = `${i * 0.08}s`;
+  });
+
+  // Copy install button in hero
+  function copyInstall(btn) {
+    navigator.clipboard.writeText('npm install -g project-health').then(() => {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<span>npm i -g project-health</span><span style="opacity:0.6;font-size:11px;color:var(--green)">✓ copied</span>';
+      setTimeout(() => btn.innerHTML = orig, 2000);
+    });
+  }
+
+  // Copy code lines
+  function copyCode(btn, text) {
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = '✓ copied';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = 'copy';
+        btn.classList.remove('copied');
+      }, 2000);
+    });
+  }
+</script>
+</body>
+</html>
