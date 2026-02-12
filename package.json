@@ -2,10 +2,39 @@
   "name": "project-health",
   "version": "1.0.0",
   "description": "Terminal health dashboard for developers",
+  "author": "Yash Nandvana <contact@yashnandvana.in>",
+  "license": "MIT",
+  "homepage": "https://github.com/yash-nandvana/project-health#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yash-nandvana/project-health.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yash-nandvana/project-health/issues"
+  },
   "bin": {
     "project-health": "./bin/cli.js"
   },
+  "main": "./src/engine.js",
+  "files": [
+    "bin/",
+    "src/",
+    "README.md"
+  ],
   "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "cli",
+    "developer-tools",
+    "health",
+    "dashboard",
+    "devtools",
+    "npm-audit",
+    "git",
+    "terminal"
+  ],
   "dependencies": {
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
@@ -15,16 +44,5 @@
     "ora": "^8.0.1",
     "boxen": "^8.0.0",
     "figlet": "^1.7.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "keywords": [
-    "cli",
-    "developer-tools",
-    "health",
-    "dashboard",
-    "devtools"
-  ],
-  "license": "MIT"
+  }
 }
