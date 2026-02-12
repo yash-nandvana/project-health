@@ -1,5 +1,5 @@
 {
-  "name": "project-health",
+  "name": "check-project-health",
   "version": "1.0.0",
   "description": "Terminal health dashboard for developers",
   "author": "Yash Nandvana <contact@yashnandvana.in>",
@@ -13,7 +13,7 @@
     "url": "https://github.com/yash-nandvana/project-health/issues"
   },
   "bin": {
-    "project-health": "./bin/cli.js"
+    "check-project-health": "./bin/cli.js"
   },
   "main": "./src/engine.js",
   "files": [

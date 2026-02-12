@@ -14,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 program
-  .name('project-health')
+  .name('check-project-health')
   .description('Analyze a project and show a terminal health dashboard')
   .option('--json', 'Output raw JSON instead of the visual dashboard')
   .option('--no-color', 'Disable colored output')
@@ -31,7 +31,7 @@ async function main() {
   if (!opts.json) {
     console.log(
       colors.title(
-        figlet.textSync('project-health', { horizontalLayout: 'fitted', font: 'Slant' })
+        figlet.textSync('check-project-health', { horizontalLayout: 'fitted', font: 'Slant' })
       )
     );
     console.log(colors.dim('  Analyzing your project...\n'));

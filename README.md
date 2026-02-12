@@ -1,6 +1,6 @@
-# project-health
+# check-project-health
 
-[![npm version](https://img.shields.io/npm/v/project-health.svg)](https://www.npmjs.com/package/project-health)
+[![npm version](https://img.shields.io/npm/v/check-project-health.svg)](https://www.npmjs.com/package/check-project-health)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Node version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org)
 
@@ -27,7 +27,7 @@
 ## Installation
 
 ```bash
-npm install -g project-health
+npm install -g check-project-health
 ```
 
 ---
@@ -37,7 +37,7 @@ npm install -g project-health
 Run from any project directory (uses current working directory):
 
 ```bash
-project-health
+check-project-health
 ```
 
 ### Options
@@ -52,10 +52,10 @@ project-health
 **Examples:**
 
 ```bash
-project-health --json > report.json
-project-health --no-color
-project-health --skip "Tests,Security"
-project-health --run-tests
+check-project-health --json > report.json
+check-project-health --no-color
+check-project-health --skip "Tests,Security"
+check-project-health --run-tests
 ```
 
 ---
