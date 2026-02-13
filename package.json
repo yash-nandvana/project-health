@@ -1,6 +1,6 @@
 {
   "name": "check-project-health",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Terminal health dashboard for developers",
   "author": "Yash Nandvana <contact@yashnandvana.in>",
   "license": "MIT",
