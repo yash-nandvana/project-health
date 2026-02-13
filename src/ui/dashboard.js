@@ -2,7 +2,7 @@ import boxen from 'boxen';
 import Table from 'cli-table3';
 import { colors, gradeColors } from './colors.js';
 
-const STATUS_ICONS = { ok: '✅', warn: '⚠️', fail: '❌', skip: '⏭️', error: '❌' };
+const STATUS_ICONS = { ok: '✅', warn: '⚠️ ', fail: '❌', skip: '⏭️ ', error: '❌' };
 
 /**
  * @param {{ results: import('../checkers/index.js').CheckerResult[], score: number, grade: string, label: string }} data
